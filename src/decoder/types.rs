@@ -35,8 +35,18 @@ pub struct LogicalScreenDescriptor {
     pub pixel_aspect_ratio: u8,
 }
 
+#[derive(Debug)]
+pub struct Pixel {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+}
+
+pub type GlobalColorTable = Vec<Pixel>;
+
 pub struct GifFile {
     pub header: GifHeader,
     pub logical_screen_descriptor: LogicalScreenDescriptor,
+    pub global_color_table: Option<GlobalColorTable>,
 }
 
