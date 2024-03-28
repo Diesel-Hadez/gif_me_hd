@@ -331,3 +331,197 @@ impl GifFile {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const leftover: &[u8] = &[127, 42];
+
+    #[test]
+    fn read_pixel() {
+        const pixels: &[u8] = &[24, 23, 255, 127, 42];
+        assert_eq!(
+            take_pixel(pixels),
+            Ok(
+                (
+                    leftover,
+                    Pixel {
+                        red: 24,
+                        green: 23,
+                        blue: 255,
+                    }
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn read_header() {
+        const header_89a: &[u8] = &[0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 127, 42];
+        assert_eq!(
+            parse_header(header_89a),
+            Ok(
+                (
+                    leftover,
+                    GifHeader::GIF89a,
+                )
+            )
+        );
+
+        const header_87a: &[u8] = &[0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 127, 42];
+        assert_eq!(
+            parse_header(header_87a),
+            Ok(
+                (
+                    leftover,
+                    GifHeader::GIF87a,
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn read_logical_screen_descriptor() {
+        const data: &[u8] = &[0x0a, 0x00, 0x0a, 0x00, 0x91, 0x02, 0x03, 127, 42];
+        assert_eq!(
+            parse_logical_screen_descriptor(data),
+            Ok(
+                (
+                    leftover,
+                    LogicalScreenDescriptor {
+                        canvas_width: 10, 
+                        canvas_height: 10, 
+                        global_color_table_flag: true,
+                        color_resolution: 1, 
+                        sort_flag: false, 
+                        global_color_table_size: 1, 
+                        background_color_index: 2, 
+                        pixel_aspect_ratio: 3,
+                    },
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn read_global_color_table() {
+        const data: &[u8] = &[0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 127, 42];
+        let lsd = LogicalScreenDescriptor {
+            canvas_width: 0,
+            canvas_height: 0,
+            // Enable Global Color Table
+            global_color_table_flag: true,
+            color_resolution: 0,
+            sort_flag: false,
+            // 2^(size+1) = 2^(2) = 4 pixels in color table.
+            global_color_table_size: 1,
+            background_color_index: 0,
+            pixel_aspect_ratio: 0,
+        };
+        assert_eq!(
+            parse_global_color_table(data, &lsd),
+            Ok(
+                (
+                    leftover,
+                    Some(
+                        vec![
+                        Pixel { 
+                            red: 0xFF, 
+                            green: 0xFF, 
+                            blue: 0xFF,
+                        },
+                        Pixel { 
+                            red: 0xFF, 
+                            green: 0x00, 
+                            blue: 0x00,
+                        },
+                        Pixel { 
+                            red: 0x00, 
+                            green: 0x00, 
+                            blue: 0xFF,
+                        },
+                        Pixel { 
+                            red: 0x00, 
+                            green: 0x00, 
+                            blue: 0x00,
+                        },
+                        ]
+                    ),
+                )
+            )
+        );
+    }
+    #[test]
+    fn read_empty_global_color_table() {
+        const data: &[u8] = &[68, 127, 42];
+        let lsd = LogicalScreenDescriptor {
+            canvas_width: 0,
+            canvas_height: 0,
+            // Disable Global Color Table
+            global_color_table_flag: false,
+            color_resolution: 0,
+            sort_flag: false,
+            // Shouldn't matter what this says,
+            // since the flag says its disabled
+            global_color_table_size: 1,
+            background_color_index: 0,
+            pixel_aspect_ratio: 0,
+        };
+        assert_eq!(
+            parse_global_color_table(data, &lsd),
+            Ok(
+                (
+                    // leftover is the same data since
+                    // nothing should be parsed
+                    data,
+                    None,
+                )
+            )
+        );
+    }
+    #[test]
+    fn read_graphic_control_extension() {
+        const data: &[u8] = &[0x21, 0xF9, 0x04, 0x00, 0x00, 0x09, 0x05, 0x00, 127, 42];
+        assert_eq!(
+            parse_extensions(data),
+            Ok(
+                (
+                    leftover,
+                    vec![
+                        Extension::GraphicsControlExtension { 
+                            reserved: 0,
+						    disposal_method: DisposalMethod::NoDisposal,
+						    user_input_flag: false,
+						    transparent_color_flag: false,
+						    delay_timer: 0x900,
+						    transparent_color_index: 5,
+                        },
+                    ],
+                )
+            )
+        );
+    }
+    #[test]
+    fn read_image_descriptor() {
+        const data: &[u8] = &[0x2C, 0x20, 0x00, 0x30, 0x00, 0x00, 0x02, 0x0A, 0x03, 0x03, 127, 42];
+        assert_eq!(
+            parse_image_descriptor(data),
+            Ok(
+                (
+                    leftover,
+                    ImageDescriptor{ 
+                        left: 0x20,
+						top: 0x30,
+						width: 0x200,
+						height: 0x30A,
+						local_color_table_flag: false,
+						interlace_flag: false,
+						sort_flag: false,
+						reserved: 0,
+						local_color_table_size: 3,
+					},
+                )
+            )
+        );
+    }
+}

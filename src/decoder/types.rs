@@ -1,3 +1,5 @@
+
+#[derive(Debug, PartialEq)]
 pub enum GifHeader {
     GIF89a,
     GIF87a,
@@ -17,7 +19,7 @@ impl GifHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LogicalScreenDescriptor {
     pub canvas_width: u16,
     pub canvas_height: u16,
@@ -34,7 +36,7 @@ pub struct LogicalScreenDescriptor {
     pub pixel_aspect_ratio: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Pixel {
     pub red: u8,
     pub green: u8,
@@ -43,7 +45,7 @@ pub struct Pixel {
 
 pub type GlobalColorTable = Vec<Pixel>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DisposalMethod {
   NoDisposal,
   DoNotDispose,
@@ -51,7 +53,7 @@ pub enum DisposalMethod {
   RestoreToPrevious,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Extension {
     GraphicsControlExtension {
         reserved: u8,
@@ -76,7 +78,7 @@ pub enum Extension {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ImageDescriptor {
     pub left: u16,
     pub top: u16,
