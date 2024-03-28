@@ -97,13 +97,13 @@ pub struct GifFrame {
     pub image_descriptor: ImageDescriptor,
     pub local_color_table: Option<LocalColorTable>,
     pub frame_indices: FrameIndices,
+    pub extensions: Vec<Extension>,
 }
 
 pub struct GifFile {
     pub header: GifHeader,
     pub logical_screen_descriptor: LogicalScreenDescriptor,
     pub global_color_table: Option<GlobalColorTable>,
-    pub extensions: Vec<Extension>,
     pub frames: Vec<GifFrame>,
 }
 

@@ -13,9 +13,9 @@ fn main() {
         Some(gct) => println!("Global Color Table: {:#?}", gct),
         None => println!("No Global Color Table"),
     }
-    println!("Extensions: {:#?}", gif_file.extensions);
     gif_file.frames.into_iter().for_each(
         |frame| {
+            println!("Extensions: {:#?}", frame.extensions);
             println!("Frame: {:#?}", frame);
         }
     );

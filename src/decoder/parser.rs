@@ -287,6 +287,7 @@ fn parse_image_data(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
 }
 
 fn parse_frame(bytes: &[u8]) -> IResult<&[u8], GifFrame> {
+    let (bytes, extensions) = parse_extensions(bytes).unwrap();
     let (bytes, image_descriptor) = parse_image_descriptor(bytes)?;
     let (bytes, local_color_table) = parse_local_color_table(bytes, &image_descriptor)?;
     let (bytes, frame_indices) = parse_image_data(bytes)?;
@@ -296,6 +297,7 @@ fn parse_frame(bytes: &[u8]) -> IResult<&[u8], GifFrame> {
                 image_descriptor,
                 local_color_table,
                 frame_indices,
+                extensions,
             }
         ))
 }
@@ -306,14 +308,12 @@ impl GifFile {
         let (bytes, header) = parse_header(bytes).unwrap();
         let (bytes, logical_screen_descriptor) = parse_logical_screen_descriptor(bytes).unwrap();
         let (bytes, global_color_table) = parse_global_color_table(bytes, &logical_screen_descriptor).unwrap();
-        let (bytes, extensions) = parse_extensions(bytes).unwrap();
         let (bytes, frame) = parse_frame(bytes).unwrap();
         Ok(
             GifFile {
                 header,
                 logical_screen_descriptor,
                 global_color_table,
-                extensions,
                 frames: vec![frame],
             }
         )
