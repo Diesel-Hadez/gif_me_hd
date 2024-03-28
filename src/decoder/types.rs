@@ -44,9 +44,48 @@ pub struct Pixel {
 
 pub type GlobalColorTable = Vec<Pixel>;
 
+pub struct SubBlock<'a> {
+    pub size: u8,
+    pub data: &'a[u8],
+}
+
+#[derive(Debug)]
+pub enum DisposalMethod {
+  NoDisposal,
+  DoNotDispose,
+  RestoreToBackground,
+  RestoreToPrevious,
+}
+
+#[derive(Debug)]
+pub enum Extension {
+    GraphicsControlExtension {
+        reserved: u8,
+        disposal_method: DisposalMethod,
+        user_input_flag: bool,
+        transparent_color_flag: bool,
+
+        delay_timer: u16,
+        transparent_color_index: u8,
+    },
+    PlainText {
+        text: String,
+    },
+    Application{
+        identifier: String,
+        authentication_code: String,
+        // Custom data for application-specific purposes
+        data: Vec<u8>, 
+    },
+    Comment {
+        text: String,
+    },
+}
+
 pub struct GifFile {
     pub header: GifHeader,
     pub logical_screen_descriptor: LogicalScreenDescriptor,
     pub global_color_table: Option<GlobalColorTable>,
+    pub extensions: Vec<Extension>,
 }
 
