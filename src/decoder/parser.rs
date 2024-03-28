@@ -14,8 +14,6 @@ use std::str;
 use nom::bytes::complete::tag;
 use nom::combinator::eof;
 use nom::combinator::fail;
-use nom::error::Error;
-use nom::error::ErrorKind;
 use nom::multi::fold_many1;
 use nom::multi::{count, many0, many1};
 use nom::number::complete::{le_u8, le_u16};
