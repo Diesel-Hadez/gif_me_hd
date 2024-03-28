@@ -1,6 +1,7 @@
 use std::{fs::File, io::Read};
 mod parser;
 mod types;
+mod lzw;
 use parser::*;
 use types::*;
 

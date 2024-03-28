@@ -25,7 +25,6 @@ pub struct LogicalScreenDescriptor {
     // Packed field, maybe nice to have some sort of bitfield instead.
     pub global_color_table_flag: bool,
 
-    // TO-DO: Make this a custom type that fits into the 3-bit range
     pub color_resolution: u16, 
 
     pub sort_flag: bool,
@@ -43,11 +42,6 @@ pub struct Pixel {
 }
 
 pub type GlobalColorTable = Vec<Pixel>;
-
-pub struct SubBlock<'a> {
-    pub size: u8,
-    pub data: &'a[u8],
-}
 
 #[derive(Debug)]
 pub enum DisposalMethod {
@@ -82,10 +76,34 @@ pub enum Extension {
     },
 }
 
+#[derive(Debug)]
+pub struct ImageDescriptor {
+    pub left: u16,
+    pub top: u16,
+    pub width: u16,
+    pub height: u16,
+    pub local_color_table_flag: bool,
+    pub interlace_flag: bool,
+    pub sort_flag: bool,
+    pub reserved: u8,
+    pub local_color_table_size: u8,
+}
+
+pub type LocalColorTable = Vec<Pixel>;
+pub type FrameIndices = Vec<u8>;
+
+#[derive(Debug)]
+pub struct GifFrame {
+    pub image_descriptor: ImageDescriptor,
+    pub local_color_table: Option<LocalColorTable>,
+    pub frame_indices: FrameIndices,
+}
+
 pub struct GifFile {
     pub header: GifHeader,
     pub logical_screen_descriptor: LogicalScreenDescriptor,
     pub global_color_table: Option<GlobalColorTable>,
     pub extensions: Vec<Extension>,
+    pub frames: Vec<GifFrame>,
 }
 
