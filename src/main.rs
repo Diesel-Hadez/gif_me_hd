@@ -8,14 +8,15 @@ fn main() {
     }
     let file = &args[1];
     let gif_file = decoder::load(&file[..]).unwrap();
-    println!("Logical Screen Descriptor: {:#?}", gif_file.logical_screen_descriptor);
+    println!(
+        "Logical Screen Descriptor: {:#?}",
+        gif_file.logical_screen_descriptor
+    );
     match gif_file.global_color_table {
         Some(gct) => println!("Global Color Table: {:#?}", gct),
         None => println!("No Global Color Table"),
     }
-    gif_file.frames.into_iter().for_each(
-        |frame| {
-            println!("Frame: {:#?}", frame);
-        }
-    );
+    gif_file.frames.into_iter().for_each(|frame| {
+        println!("Frame: {:#?}", frame);
+    });
 }

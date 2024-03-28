@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq)]
 pub enum GifHeader {
     GIF89a,
@@ -6,16 +5,11 @@ pub enum GifHeader {
 }
 impl GifHeader {
     pub fn from(header: &str) -> Result<GifHeader, &'static str> {
-        match header
-            .to_uppercase()
-            .as_str() 
-        {
+        match header.to_uppercase().as_str() {
             "GIF89A" => Ok(GifHeader::GIF89a),
             "GIF87A" => Ok(GifHeader::GIF87a),
-            _ => Err("File format header not supported!")
-
+            _ => Err("File format header not supported!"),
         }
-
     }
 }
 
@@ -27,7 +21,7 @@ pub struct LogicalScreenDescriptor {
     // Packed field, maybe nice to have some sort of bitfield instead.
     pub global_color_table_flag: bool,
 
-    pub color_resolution: u16, 
+    pub color_resolution: u16,
 
     pub sort_flag: bool,
     pub global_color_table_size: u16,
@@ -47,10 +41,10 @@ pub type GlobalColorTable = Vec<Pixel>;
 
 #[derive(Debug, PartialEq)]
 pub enum DisposalMethod {
-  NoDisposal,
-  DoNotDispose,
-  RestoreToBackground,
-  RestoreToPrevious,
+    NoDisposal,
+    DoNotDispose,
+    RestoreToBackground,
+    RestoreToPrevious,
 }
 
 #[derive(Debug, PartialEq)]
@@ -67,11 +61,11 @@ pub enum Extension {
     PlainText {
         text: String,
     },
-    Application{
+    Application {
         identifier: String,
         authentication_code: String,
         // Custom data for application-specific purposes
-        data: Vec<u8>, 
+        data: Vec<u8>,
     },
     Comment {
         text: String,
@@ -108,4 +102,3 @@ pub struct GifFile {
     pub global_color_table: Option<GlobalColorTable>,
     pub frames: Vec<GifFrame>,
 }
-
