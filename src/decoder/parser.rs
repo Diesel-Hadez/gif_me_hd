@@ -13,6 +13,9 @@ use super::lzw;
 use std::str;
 use nom::bytes::complete::tag;
 use nom::combinator::eof;
+use nom::combinator::fail;
+use nom::error::Error;
+use nom::error::ErrorKind;
 use nom::multi::fold_many1;
 use nom::multi::{count, many0, many1};
 use nom::number::complete::{le_u8, le_u16};
@@ -268,6 +271,9 @@ fn parse_data_block(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
     // the decompression code to be somewhere else and not here.
     fn parse_data_subblock(bytes: &[u8]) -> IResult<&[u8], &[u8]> {
         let (bytes, subblock_length) = le_u8(bytes)?;
+        if subblock_length == 0 {
+            return fail::<_, &[u8], _>(bytes);
+        }
         let (bytes, subblock) = take(subblock_length)(bytes)?;
         Ok((bytes, subblock))
     }
@@ -277,6 +283,9 @@ fn parse_data_block(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
                                         acc.extend_from_slice(item);
                                         acc
                                     })(bytes)?;
+    // Take in the final 0
+    const BLOCK_TERMINATOR: &[u8] = &[0x00];
+    let (bytes, _) = tag(BLOCK_TERMINATOR)(bytes)?;
     Ok((bytes, block))
 }
 

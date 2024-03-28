@@ -15,7 +15,6 @@ fn main() {
     }
     gif_file.frames.into_iter().for_each(
         |frame| {
-            println!("Extensions: {:#?}", frame.extensions);
             println!("Frame: {:#?}", frame);
         }
     );
