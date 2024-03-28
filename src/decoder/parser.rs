@@ -12,8 +12,9 @@ use super::Pixel;
 use super::lzw;
 use std::str;
 use nom::bytes::complete::tag;
+use nom::combinator::eof;
 use nom::multi::fold_many1;
-use nom::multi::{count, many0};
+use nom::multi::{count, many0, many1};
 use nom::number::complete::{le_u8, le_u16};
 use nom::bits;
 use nom::sequence::preceded;
@@ -308,13 +309,17 @@ impl GifFile {
         let (bytes, header) = parse_header(bytes).unwrap();
         let (bytes, logical_screen_descriptor) = parse_logical_screen_descriptor(bytes).unwrap();
         let (bytes, global_color_table) = parse_global_color_table(bytes, &logical_screen_descriptor).unwrap();
-        let (bytes, frame) = parse_frame(bytes).unwrap();
+        let (bytes, frames) = many1(parse_frame)(bytes).unwrap();
+        let (bytes, _) = tag::<&[u8], &[u8], nom::error::Error<&[u8]>>
+            (TRAILER)(bytes).unwrap();
+        let (_, _) = eof::<&[u8], nom::error::Error<&[u8]>>
+            (bytes).unwrap();
         Ok(
             GifFile {
                 header,
                 logical_screen_descriptor,
                 global_color_table,
-                frames: vec![frame],
+                frames,
             }
         )
     }
