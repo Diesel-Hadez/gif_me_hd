@@ -3,9 +3,16 @@
 version = 3
 
 [[package]]
+name = "bitter"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e5958a5c88910651ad16ab92586bce672368e90e4f49ad0dd32518d13b0a73d"
+
+[[package]]
 name = "gif_me_hd"
 version = "0.1.0"
 dependencies = [
+ "bitter",
  "nom",
 ]
 
