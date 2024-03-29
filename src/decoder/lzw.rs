@@ -91,34 +91,191 @@ impl Code {
     }
 }
 
-fn create_inverse_code_table(minimum_code_size: u8) -> Vec<Code> {
-    let mut ret = Vec::new();
-    for i in 0..((2 as u8).pow(minimum_code_size.into())) {
-        ret.push(Code::Entry(i));
+// Concept of using indexes in a vec! as pointers taken from
+// https://dev.to/deciduously/no-more-tears-no-more-knots-arena-allocated-trees-in-rust-44k6
+// So that I don't have to worry about ownership and usage of smart pointers
+
+#[derive(Debug)]
+struct Node<T>
+where
+    T: PartialEq
+{
+    idx: usize,
+    val: T,
+    children: Vec<usize>,
+}
+
+impl<T> Node<T> 
+where
+    T: PartialEq
+{
+    fn new(idx: usize, val: T) -> Self {
+        Self {
+            idx,
+            val,
+            children: vec![],
+        }
     }
-    ret.push(Code::ClearCodeInv);
-    ret.push(Code::EoiCodeInv);
+}
+
+#[derive(Debug, Default)]
+struct CodeInvTree {
+    values: Vec<Node<Code>>,
+    root_children: Vec<usize>,
+}
+
+#[derive(PartialEq)]
+enum TreeError {
+    PathNotFound,
+    NoPathSpecified,
+}
+
+impl CodeInvTree {
+    fn insert(&mut self, val: Code) -> usize {
+        let idx = self.values.len();
+        self.values.push(Node::new(idx, val));
+        idx
+    }
+    fn insert_root(&mut self, val: Code) -> usize {
+        let idx = self.insert(val);
+        self.root_children.push(idx);
+        idx
+    }
+
+    fn insert_at(&mut self, path: &[Code], val: Code) -> Result<usize, TreeError> {
+        let parent = self.find_path(path)?;
+        let ret = self.insert(val);
+        self.values[parent].children.push(ret);
+        Ok(ret)
+    }
+
+    fn code_exists(&self, target: &Code) -> bool {
+        match self.values
+                    .iter()
+                    .find(|&x| x.val == *target) {
+                        Some(idx) => true,
+                        None => false,
+                    }
+    }
+
+    fn path_exists(&self, path: &[Code]) -> bool {
+        match self.find_path(path) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
+    fn find_path(&self, path: &[Code]) -> Result<usize, TreeError> {
+        // No Path to nothingness
+        if path.len() == 0 {
+            return Err(TreeError::NoPathSpecified);
+        }
+
+        let mut cur_idx = 0;
+        // Look in all root children
+        cur_idx = match self.root_children
+            .iter()
+            .find(|&&x| self.values[x].val == path[0]) {
+                Some(idx) => *idx,
+                None => {
+                    return Err(TreeError::PathNotFound);
+                },
+            };
+
+        // Look for the rest
+        for code in &path[1..] {
+            cur_idx = match self.values[cur_idx]
+            .children
+            .iter()
+            .find(|&&x| self.values[x].val == path[0]) {
+                Some(idx) => *idx,
+                None => {
+                    return Err(TreeError::PathNotFound);
+                },
+            };
+        }
+        Ok(cur_idx)
+    }
+}
+
+fn create_inverse_code_table(minimum_code_size: u8) -> CodeInvTree {
+    let mut ret = CodeInvTree::default();
+    for i in 0..((2 as u8).pow(minimum_code_size.into())) {
+        ret.insert_root(Code::Entry(i));
+    }
+    ret.insert_root(Code::ClearCodeInv);
+    ret.insert_root(Code::EoiCodeInv);
     ret
 }
 
+// Adapted from the python code (that I wrote myself) here
+// https://github.com/GIF-ME-HD/gif_me_hd_proto/blob/master/gif_me_hd/lzw_gif3.py
 pub fn decompress(compressed_data: Vec<u8>, minimum_code_size: u8) -> Vec<u8> {
-    let code_table: Vec<Code> = create_inverse_code_table(minimum_code_size);
-    let mut next_smallest_code = ((2 as u8).pow(minimum_code_size.into())) + 2;
+    let code_table: CodeInvTree = create_inverse_code_table(minimum_code_size);
     let mut cur_idx = 1;
-    let mut cur_code_size = minimum_code_size + 1;
+    let mut cur_code_size: u32 = (minimum_code_size as u32) + 1;
 
     // Helper function since minimum_code_size
     // should stay the same
     let code_from = |c| Code::from(c as u16, minimum_code_size);
 
+    let mut index_stream: Vec<u8> = Vec::new();
     let mut code_stream = LittleEndianReader::new(&compressed_data);
-    let code = code_stream.read_bits(cur_code_size as u32).unwrap();
+    let code = code_stream.read_bits(cur_code_size).unwrap();
     let code = code_from(code);
 
     // Should always start with Clear Code Inventory
     assert_eq!(code, Ok(Code::ClearCodeInv));
-    println!("First Code: {:#?}", code);
-    compressed_data
+
+    let code = code_stream.read_bits(cur_code_size).unwrap();
+    let code = code_from(code).unwrap();
+
+    // First one should always be an entry
+    match code {
+        Code::Entry(code_table_index) => {
+            // This should be an entry too
+            // TO-DO: Add Code here...
+        }
+        _ => panic!("First value should be an Entry Code!"),
+    }
+
+    let mut prev_code = code;
+    loop {
+        let code = code_stream.read_bits(cur_code_size).unwrap();
+        let code = code_from(code).unwrap();
+        let mut k: usize;
+
+        // Note: If I used a hashmap, it would be a very 
+        // inefficient at O(n) complexity where n is the number
+        // of elements in the code_table, which is why I used a tree
+        // which I think would be a better structure.
+        if code_table.code_exists(&code) {
+            match code {
+                Code::Entry(val) => index_stream.push(val),
+                Code::EoiCodeInv => break,
+                Code::ClearCodeInv => {
+                    // Need to reset code_table
+                },
+            }
+        }
+        else {
+            // TO-DO
+        }
+
+        let next_smallest_code = code_table.values.len();
+
+        // TO-DO: Push to code Table
+
+        const MAX_CODE_SIZE: u32 = 12;
+        if next_smallest_code == (2 as usize).pow(cur_code_size) - 1 && 
+            cur_code_size < MAX_CODE_SIZE {
+                cur_code_size += 1;
+        }
+
+        prev_code = code;
+    }
+
+    index_stream
 }
 
 #[cfg(test)]
