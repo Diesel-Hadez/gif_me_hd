@@ -21,6 +21,21 @@ fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     ret
 }
 
+fn lift_code_to_u8(codes: &Vec<Code>) -> Vec<&u8> {
+    codes
+        .iter()
+        .map(|x| match x {
+            Code::Entry(val) => val,
+            // TO-DO: Return Error here instead?
+            // But in theory, this should never happen
+            // because of checks elsewhere in this codebase
+            _ => {
+                panic!("Code List should not contain a Special Code!")
+            }
+        })
+        .collect()
+}
+
 // Adapted from the python code (that I wrote myself) here
 // https://github.com/GIF-ME-HD/gif_me_hd_proto/blob/master/gif_me_hd/lzw_gif3.py
 pub fn decompress(
@@ -71,20 +86,7 @@ pub fn decompress(
         let k = match &code {
             Some(val) => match val {
                 InvCode::CodeList(lst) => {
-                    // TO-DO: This code is repeated later.
-                    // Can be extracted/lifted?
-                    let lst: Vec<&u8> = lst
-                        .iter()
-                        .map(|x| match x {
-                            Code::Entry(val) => val,
-                            // TO-DO: Return Error here instead?
-                            // But in theory, this should never happen
-                            // because of checks elsewhere in this codebase
-                            _ => {
-                                panic!("Code List should not contain a Special Code!")
-                            }
-                        })
-                        .collect();
+                    let lst: Vec<&u8> = lift_code_to_u8(&lst);
                     let k = lst[0];
                     index_stream.extend(lst);
                     *k
@@ -136,18 +138,7 @@ pub fn decompress(
                         // TO-DO: Return Error here instead?
                         assert!(lst.len() >= 1);
                         // lst should not contain a special code
-                        let lst: Vec<&u8> = lst
-                            .iter()
-                            .map(|x| match x {
-                                Code::Entry(val) => val,
-                                // TO-DO: Return Error here instead?
-                                // But in theory, this should never happen
-                                // because of checks elsewhere in this codebase
-                                _ => {
-                                    panic!("Previous Code List should not contain a Special Code!")
-                                }
-                            })
-                            .collect();
+                        let lst: Vec<&u8> = lift_code_to_u8(&lst);
                         let k = lst[0];
                         index_stream.extend(lst);
                         index_stream.push(*k);
