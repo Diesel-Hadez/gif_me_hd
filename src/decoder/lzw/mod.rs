@@ -42,7 +42,7 @@ pub fn decompress(
 
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
     let code = get_code(code_key).unwrap();
-    let mut prev_code = code.clone();
+    let mut prev_code_key = code_key;
 
     match code {
         InvCode::CodeList(lst) => {
@@ -67,6 +67,7 @@ pub fn decompress(
         };
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
         let code = get_code(code_key);
+        println!("Got code: {:#?} from key {}", code, code_key);
         match &code {
             Some(val) => match val {
                 InvCode::CodeList(lst) => {
@@ -102,7 +103,6 @@ pub fn decompress(
                         // the inverse code table). Can be lifted/extracted?
                         let code_key = code_stream.read_bits(cur_code_size).unwrap();
                         let code = get_code(code_key).unwrap();
-                        prev_code = code.clone();
 
                         match code {
                             InvCode::CodeList(lst) => {
@@ -126,7 +126,9 @@ pub fn decompress(
             },
             // Code not in inv_code_table
             None => {
-                match prev_code {
+                // Should be always safe to unwrap
+                // Since it was previously checked
+                match get_code(prev_code_key).unwrap() {
                     InvCode::CodeList(lst) => {
                         // TO-DO: Return Error here instead?
                         assert!(lst.len() >= 1);
@@ -161,7 +163,7 @@ pub fn decompress(
         {
             cur_code_size += 1;
         }
-        prev_code = code.unwrap().clone();
+        prev_code_key = code_key;
     }
 
     Ok(index_stream)
