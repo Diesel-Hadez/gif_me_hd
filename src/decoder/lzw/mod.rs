@@ -41,7 +41,6 @@ pub fn decompress(
     assert_eq!(code, Some(InvCode::ControlCode(SpecialCode::ClearCodeInv)));
 
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
-
     let code = get_code(code_key).unwrap();
     let mut prev_code = code.clone();
 
@@ -70,9 +69,57 @@ pub fn decompress(
         let code = get_code(code_key);
         match &code {
             Some(val) => match val {
-                InvCode::CodeList(lst) => {}
+                InvCode::CodeList(lst) => {
+                    // TO-DO: This code is repeated later.
+                    // Can be extracted/lifted?
+                    let lst: Vec<&u8> = lst
+                        .iter()
+                        .map(|x| match x {
+                            Code::Entry(val) => val,
+                            // TO-DO: Return Error here instead?
+                            // But in theory, this should never happen
+                            // because of checks elsewhere in this codebase
+                            _ => {
+                                panic!("Code List should not contain a Special Code!")
+                            }
+                        })
+                        .collect();
+                    index_stream.extend(lst);
+                }
                 InvCode::ControlCode(special_code) => match special_code {
-                    SpecialCode::ClearCodeInv => {}
+                    SpecialCode::ClearCodeInv => {
+                        inv_code_table.clear();
+                        inv_code_table.extend(create_inverse_code_table(minimum_code_size));
+                        // I don't know why I need to re-declare it but I do...
+                        let get_code = |k| match inv_code_table.get(k as usize) {
+                            Some(val) => Some(val.clone()),
+                            None => None,
+                        };
+                        cur_code_size = (minimum_code_size as u32) + 1;
+
+                        // This code is also repeated from just before the for loop
+                        // (Since it is going back to the beginning from after resetting
+                        // the inverse code table). Can be lifted/extracted?
+                        let code_key = code_stream.read_bits(cur_code_size).unwrap();
+                        let code = get_code(code_key).unwrap();
+                        prev_code = code.clone();
+
+                        match code {
+                            InvCode::CodeList(lst) => {
+                                // This should always be an entry of size 1, for the first case.
+                                // TO-DO: Return Error here instead?
+                                assert_eq!(lst.len(), 1);
+                                index_stream.push(match lst[0] {
+                                    Code::Entry(val) => val,
+                                    // TO-DO: Return Error here instead?
+                                    _ => panic!("First index should be an Entry!"),
+                                });
+                            }
+                            // TO-DO: Return Error here instead?
+                            _ => panic!("First value should be a Code List!"),
+                        }
+
+                    }
                     SpecialCode::EoiCodeInv => {
                         break;
                     }
