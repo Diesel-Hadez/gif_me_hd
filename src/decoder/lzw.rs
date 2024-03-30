@@ -128,22 +128,14 @@ pub fn decompress(
     compressed_data: Vec<u8>,
     minimum_code_size: u8,
 ) -> Result<Vec<u8>, DecompressError> {
-    let inv_code_table = create_inverse_code_table(minimum_code_size);
+    let mut inv_code_table = create_inverse_code_table(minimum_code_size);
     let mut cur_code_size: u32 = (minimum_code_size as u32) + 1;
-
-    // Helper function since minimum_code_size
-    // should stay the same
-    // let code_from = |c| Code::from(c as u16, minimum_code_size);
-
-    // Helper function to see if the code table contains a specific
-    // code
-    let has_key = |k| (k as usize) < inv_code_table.len();
 
     // Helper function to get a specific code from the code inv table
     // TO-DO Maybe error-handling here...
-    let get_code = |k| match has_key(k) {
-        true => Some(&inv_code_table[k as usize]),
-        false => None,
+    let get_code = |k| match inv_code_table.get(k as usize) {
+        Some(val) => Some(val.clone()),
+        None => None,
     };
 
     let mut index_stream: Vec<u8> = Vec::new();
@@ -152,11 +144,12 @@ pub fn decompress(
     let code = get_code(code_key);
 
     // Should always start with Clear Code Inventory
-    assert_eq!(code, Some(&InvCode::ControlCode(SpecialCode::ClearCodeInv)));
+    assert_eq!(code, Some(InvCode::ControlCode(SpecialCode::ClearCodeInv)));
 
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
 
     let code = get_code(code_key).unwrap();
+    let mut prev_code = code.clone();
 
     match code {
         InvCode::CodeList(lst) => {
@@ -173,12 +166,15 @@ pub fn decompress(
         _ => panic!("First value should be a Code List!"),
     }
 
-    let mut prev_code = code;
     loop {
+        // I don't know why I need to re-declare it but I do...
+        let get_code = |k| match inv_code_table.get(k as usize) {
+            Some(val) => Some(val.clone()),
+            None => None,
+        };
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
-
         let code = get_code(code_key);
-        match code {
+        match &code {
             Some(val) => match val {
                 InvCode::CodeList(lst) => {}
                 InvCode::ControlCode(special_code) => match special_code {
@@ -216,19 +212,16 @@ pub fn decompress(
                     _ => panic!("prev_code should not be a special code!"),
                 };
             }
-            _ => panic!("Unknown Error when retrieving code from inverse code table!!"),
         };
 
-        // inv_code_table.push(code);
+        inv_code_table.push(InvCode::CodeList(vec![]));
 
         const MAX_CODE_SIZE: u32 = 12;
         if inv_code_table.len() == (2 as usize).pow(cur_code_size) && cur_code_size < MAX_CODE_SIZE
         {
             cur_code_size += 1;
         }
-
-        // Does a copy, which should be fine since InvCode is small
-        prev_code = code.unwrap();
+        prev_code = code.unwrap().clone();
     }
 
     Ok(index_stream)
