@@ -142,8 +142,8 @@ pub fn decompress(
     // Helper function to get a specific code from the code inv table
     // TO-DO Maybe error-handling here...
     let get_code = |k| match has_key(k) {
-        true => Ok(&inv_code_table[k as usize]),
-        false => Err(DecompressError::KeyDoesNotExist),
+        true => Some(&inv_code_table[k as usize]),
+        false => None,
     };
 
     let mut index_stream: Vec<u8> = Vec::new();
@@ -152,11 +152,11 @@ pub fn decompress(
     let code = get_code(code_key);
 
     // Should always start with Clear Code Inventory
-    assert_eq!(code, Ok(&InvCode::ControlCode(SpecialCode::ClearCodeInv)));
+    assert_eq!(code, Some(&InvCode::ControlCode(SpecialCode::ClearCodeInv)));
 
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
 
-    let code = get_code(code_key)?;
+    let code = get_code(code_key).unwrap();
 
     match code {
         InvCode::CodeList(lst) => {
@@ -177,17 +177,19 @@ pub fn decompress(
     loop {
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
 
-        let code = get_code(code_key)?;
+        let code = get_code(code_key);
         match code {
-            InvCode::CodeList(lst) => {}
-            InvCode::ControlCode(special_code) => match special_code {
-                SpecialCode::ClearCodeInv => {}
-                SpecialCode::EoiCodeInv => {
-                    break;
-                }
+            Some(val) => match val {
+                InvCode::CodeList(lst) => {}
+                InvCode::ControlCode(special_code) => match special_code {
+                    SpecialCode::ClearCodeInv => {}
+                    SpecialCode::EoiCodeInv => {
+                        break;
+                    }
+                },
             },
             // Code not in inv_code_table
-            _ => {
+            None => {
                 match prev_code {
                     InvCode::CodeList(lst) => {
                         // TO-DO: Return Error here instead?
@@ -214,6 +216,7 @@ pub fn decompress(
                     _ => panic!("prev_code should not be a special code!"),
                 };
             }
+            _ => panic!("Unknown Error when retrieving code from inverse code table!!"),
         };
 
         // inv_code_table.push(code);
@@ -225,7 +228,7 @@ pub fn decompress(
         }
 
         // Does a copy, which should be fine since InvCode is small
-        prev_code = code;
+        prev_code = code.unwrap();
     }
 
     Ok(index_stream)
