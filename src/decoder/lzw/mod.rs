@@ -1,9 +1,9 @@
-mod types;
 mod errors;
-use types::*;
-use errors::*;
+mod types;
 use bitter::{BitReader, LittleEndianReader};
-use types::{SpecialCode, Code};
+use errors::*;
+use types::*;
+use types::{Code, SpecialCode};
 fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     use InvCode::*;
     use SpecialCode::*;
@@ -118,7 +118,6 @@ pub fn decompress(
                             // TO-DO: Return Error here instead?
                             _ => panic!("First value should be a Code List!"),
                         }
-
                     }
                     SpecialCode::EoiCodeInv => {
                         break;
@@ -195,5 +194,20 @@ mod tests {
     fn invalid_code_size() {
         assert_eq!(Code::from(0, 1), Err(CodeParseError::MinCodeSizeInvalid(1)));
         assert_eq!(Code::from(0, 9), Err(CodeParseError::MinCodeSizeInvalid(9)));
+    }
+
+    #[test]
+    fn decompress_valid_stream() {
+        let compressed_data: Vec<u8> = vec![
+            140, 45, 153, 135, 42, 28, 220, 51, 160, 2, 117, 236, 149, 250, 168, 222, 96, 140, 4,
+            145, 76, 1,
+        ];
+        let decompressed_data: Vec<u8> = vec![
+            1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2,
+            2, 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1,
+            1, 1, 2, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1,
+            1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1,
+        ];
+        assert_eq!(decompress(compressed_data, 2), Ok(decompressed_data));
     }
 }

@@ -62,7 +62,6 @@ impl fmt::Debug for CodeParseError {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub enum DecompressError {
     KeyDoesNotExist,

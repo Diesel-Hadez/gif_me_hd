@@ -40,4 +40,3 @@ pub enum InvCode {
 }
 
 pub type InvCodeTable = Vec<InvCode>;
-
