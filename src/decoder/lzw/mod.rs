@@ -9,7 +9,12 @@ fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     use SpecialCode::*;
     let mut ret = InvCodeTable::new();
     for i in 0..((2 as u8).pow(minimum_code_size.into())) {
-        ret.push(CodeList(vec![Code::Entry(i)]));
+        // TO-DO: Return Error here instead?
+        ret.push(CodeList(vec![Code::from(
+            i as u16,
+            minimum_code_size.into(),
+        )
+        .unwrap()]));
     }
     ret.push(ControlCode(ClearCodeInv));
     ret.push(ControlCode(EoiCodeInv));
@@ -68,7 +73,7 @@ pub fn decompress(
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
         let code = get_code(code_key);
         println!("Got code: {:#?} from key {}", code, code_key);
-        match &code {
+        let k = match &code {
             Some(val) => match val {
                 InvCode::CodeList(lst) => {
                     // TO-DO: This code is repeated later.
@@ -85,7 +90,9 @@ pub fn decompress(
                             }
                         })
                         .collect();
+                    let k = lst[0];
                     index_stream.extend(lst);
+                    *k
                 }
                 InvCode::ControlCode(special_code) => match special_code {
                     SpecialCode::ClearCodeInv => {
@@ -114,6 +121,7 @@ pub fn decompress(
                                     // TO-DO: Return Error here instead?
                                     _ => panic!("First index should be an Entry!"),
                                 });
+                                continue;
                             }
                             // TO-DO: Return Error here instead?
                             _ => panic!("First value should be a Code List!"),
@@ -148,15 +156,32 @@ pub fn decompress(
                         let k = lst[0];
                         index_stream.extend(lst);
                         index_stream.push(*k);
-                        k
+                        *k
                     }
                     // TO-DO: Return Error here instead?
                     _ => panic!("prev_code should not be a special code!"),
-                };
+                }
             }
         };
+        {
+            // I don't know why I need to re-declare it but I do...
+            let get_code = |k| match inv_code_table.get(k as usize) {
+                Some(val) => Some(val.clone()),
+                None => None,
+            };
 
-        inv_code_table.push(InvCode::CodeList(vec![]));
+            // Should be always safe to unwrap
+            // Since it was previously checked
+            match get_code(prev_code_key).unwrap() {
+                InvCode::CodeList(lst) => {
+                    // TO-DO: Return Error here instead?
+                    inv_code_table.push(InvCode::CodeList(
+                        vec![lst, vec![Code::from(k as u16, minimum_code_size).unwrap()]].concat(),
+                    ));
+                }
+                InvCode::ControlCode(_) => panic!("Previouc Code Should not be a Control Code!"),
+            }
+        }
 
         const MAX_CODE_SIZE: u32 = 12;
         if inv_code_table.len() == (2 as usize).pow(cur_code_size) && cur_code_size < MAX_CODE_SIZE
