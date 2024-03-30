@@ -291,7 +291,9 @@ fn parse_image_data(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
 
     Ok((
         bytes,
-        lzw::decompress(compressed_data, lzw_minimum_code_size),
+        // Using unwrap here is probably a bad idea, so maybe decompression
+        // should be done at a different stage and not in a parser combinator?
+        lzw::decompress(compressed_data, lzw_minimum_code_size).unwrap(),
     ))
 }
 
