@@ -32,7 +32,7 @@ pub fn decompress(
 
     // Helper function to get a specific code from the code inv table
     // TO-DO Maybe error-handling here...
-    let get_code = |k| match inv_code_table.get(k as usize) {
+    let get_code = |k, t: &InvCodeTable| match t.get(k as usize) {
         Some(val) => Some(val.clone()),
         None => None,
     };
@@ -40,13 +40,13 @@ pub fn decompress(
     let mut index_stream: Vec<u8> = Vec::new();
     let mut code_stream = LittleEndianReader::new(&compressed_data);
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
-    let code = get_code(code_key);
+    let code = get_code(code_key, &inv_code_table);
 
     // Should always start with Clear Code Inventory
     assert_eq!(code, Some(InvCode::ControlCode(SpecialCode::ClearCodeInv)));
 
     let code_key = code_stream.read_bits(cur_code_size).unwrap();
-    let code = get_code(code_key).unwrap();
+    let code = get_code(code_key, &inv_code_table).unwrap();
     let mut prev_code_key = code_key;
 
     match code {
@@ -65,13 +65,8 @@ pub fn decompress(
     }
 
     loop {
-        // I don't know why I need to re-declare it but I do...
-        let get_code = |k| match inv_code_table.get(k as usize) {
-            Some(val) => Some(val.clone()),
-            None => None,
-        };
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
-        let code = get_code(code_key);
+        let code = get_code(code_key, &inv_code_table);
         println!("Got code: {:#?} from key {}", code, code_key);
         let k = match &code {
             Some(val) => match val {
@@ -136,7 +131,7 @@ pub fn decompress(
             None => {
                 // Should be always safe to unwrap
                 // Since it was previously checked
-                match get_code(prev_code_key).unwrap() {
+                match get_code(prev_code_key, &inv_code_table).unwrap() {
                     InvCode::CodeList(lst) => {
                         // TO-DO: Return Error here instead?
                         assert!(lst.len() >= 1);
@@ -164,15 +159,9 @@ pub fn decompress(
             }
         };
         {
-            // I don't know why I need to re-declare it but I do...
-            let get_code = |k| match inv_code_table.get(k as usize) {
-                Some(val) => Some(val.clone()),
-                None => None,
-            };
-
             // Should be always safe to unwrap
             // Since it was previously checked
-            match get_code(prev_code_key).unwrap() {
+            match get_code(prev_code_key, &inv_code_table).unwrap() {
                 InvCode::CodeList(lst) => {
                     // TO-DO: Return Error here instead?
                     inv_code_table.push(InvCode::CodeList(
