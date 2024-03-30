@@ -107,6 +107,7 @@ pub fn decompress(
                         // the inverse code table). Can be lifted/extracted?
                         let code_key = code_stream.read_bits(cur_code_size).unwrap();
                         let code = get_code(code_key).unwrap();
+                        prev_code_key = code_key;
 
                         match code {
                             InvCode::CodeList(lst) => {
