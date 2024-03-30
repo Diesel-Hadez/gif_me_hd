@@ -1,110 +1,9 @@
-use std::fmt;
-
+mod types;
+mod errors;
+use types::*;
+use errors::*;
 use bitter::{BitReader, LittleEndianReader};
-
-#[derive(Debug, PartialEq, Clone)]
-enum SpecialCode {
-    ClearCodeInv,
-    EoiCodeInv,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-enum Code {
-    // Max size of code table is 2**8+2
-    // but at least 2 of them must be the ClearCodeInv
-    // and EoiCodeInv
-    // so it should fit in a u8
-    Entry(u8),
-    ControlCode(SpecialCode),
-}
-
-#[derive(PartialEq)]
-enum CodeParseError {
-    // first is the value
-    // second is the minimum_code_size
-    CodeTooBig(u16, u8),
-    MinCodeSizeInvalid(u8),
-}
-
-impl fmt::Display for CodeParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use CodeParseError::{CodeTooBig, MinCodeSizeInvalid};
-        match self {
-            CodeTooBig(value, min_code_size) => {
-                let max = (2 as u16).pow(*min_code_size as u32);
-                write!(
-                    f,
-                    "LZW Code too big! Max is {} and entered is {}!",
-                    max, value
-                )
-            }
-            MinCodeSizeInvalid(min_code_size) => {
-                write!(
-                    f,
-                    "LZW Min Code Size of {} is invalid! Only 2 to 8 inclusive is allowed!",
-                    min_code_size
-                )
-            }
-            _ => {
-                // Should never reach here
-                unimplemented!("Unknown CodeParseError occurred!");
-            }
-        }
-    }
-}
-impl fmt::Debug for CodeParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use CodeParseError::{CodeTooBig, MinCodeSizeInvalid};
-        write!(f, "{{ file: {}, line: {} }}", file!(), line!())?;
-        match self {
-            CodeTooBig(value, min_code_size) => {
-                let max = (2 as u16).pow(*min_code_size as u32);
-                write!(
-                    f,
-                    "LZW Code too big! Max is {} and entered is {}!",
-                    max, value
-                )
-            }
-            MinCodeSizeInvalid(min_code_size) => {
-                write!(
-                    f,
-                    "LZW Min Code Size of {} is invalid! Only 2 to 8 inclusive is allowed!",
-                    min_code_size
-                )
-            }
-            _ => {
-                // Should never reach here
-                unimplemented!("Unknown CodeParseError occurred!");
-            }
-        }
-    }
-}
-
-impl Code {
-    fn from(value: u16, minimum_code_size: u8) -> Result<Self, CodeParseError> {
-        use SpecialCode::*;
-        if minimum_code_size < 2 || minimum_code_size > 8 {
-            return Err(CodeParseError::MinCodeSizeInvalid(minimum_code_size));
-        }
-        let clear_code = (2 as u16).pow(minimum_code_size.into());
-        let eoi_code = clear_code + 1;
-        match value {
-            x if x == clear_code => Ok(Code::ControlCode(ClearCodeInv)),
-            x if x == eoi_code => Ok(Code::ControlCode(EoiCodeInv)),
-            x if x > eoi_code => Err(CodeParseError::CodeTooBig(x, minimum_code_size)),
-            _ => Ok(Code::Entry(value as u8)),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-enum InvCode {
-    CodeList(Vec<Code>),
-    ControlCode(SpecialCode),
-}
-
-type InvCodeTable = Vec<InvCode>;
-
+use types::{SpecialCode, Code};
 fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     use InvCode::*;
     use SpecialCode::*;
@@ -115,11 +14,6 @@ fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     ret.push(ControlCode(ClearCodeInv));
     ret.push(ControlCode(EoiCodeInv));
     ret
-}
-
-#[derive(Debug, PartialEq)]
-pub enum DecompressError {
-    KeyDoesNotExist,
 }
 
 // Adapted from the python code (that I wrote myself) here
