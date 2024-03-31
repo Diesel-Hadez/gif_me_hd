@@ -216,6 +216,9 @@ mod tests {
             1, 1, 2, 2, 2, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1,
             1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1,
         ];
+        // TO-DO: Test with different min_code_size
+        // and also make sure ClearCodeInv coverage
+        // is done (it's not right now)
         assert_eq!(decompress(compressed_data, 2), Ok(decompressed_data));
     }
 }
