@@ -171,14 +171,20 @@ fn parse_extensions(bytes: &[u8]) -> IResult<&[u8], Vec<Extension>> {
                 Ok((bytes, Extension::PlainText { text: "".into() }))
             }
             0xFF => {
-                unimplemented!("Application Extension not supported!");
-                #[allow(unreachable_code)]
+                const NETSCAPE_EXTENSION_LENGTH: u8 = 11;
+                let (bytes, block_size) = le_u8(bytes)?;
+                assert_eq!(block_size, NETSCAPE_EXTENSION_LENGTH);
+                let (bytes, combined) = take(block_size)(bytes)?;
+
+                // For some reason, there are usually extra bytes after this
+                // which I'm not sure what is used for...
+                let (bytes, extra) = parse_data_block(bytes)?;
                 Ok((
                     bytes,
                     Extension::Application {
-                        identifier: "".into(),
-                        authentication_code: "".into(),
-                        data: vec![],
+                        identifier: str::from_utf8(&combined[..8]).unwrap().into(),
+                        authentication_code: str::from_utf8(&combined[8..]).unwrap().into(),
+                        data: extra,
                     },
                 ))
             }
@@ -262,8 +268,7 @@ fn parse_local_color_table<'a>(
     Ok((bytes, Some(ret)))
 }
 
-// This is LZW compressed code used for both Image Data
-// and a few other things like the Plain Text Extension.
+// This is a data block used for both Image Data
 fn parse_data_block(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
     // We try get the entire block out first because we weant
     // the decompression code to be somewhere else and not here.
