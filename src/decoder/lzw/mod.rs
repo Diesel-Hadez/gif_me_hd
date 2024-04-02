@@ -82,7 +82,6 @@ pub fn decompress(
     loop {
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
         let code = get_code(code_key, &inv_code_table);
-        println!("Got code: {:#?} from key {}", code, code_key);
         let k = match &code {
             Some(val) => match val {
                 InvCode::CodeList(lst) => {
