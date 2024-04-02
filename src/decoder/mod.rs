@@ -2,8 +2,8 @@ use std::{fs::File, io::Read};
 mod lzw;
 mod parser;
 mod types;
-use parser::*;
-use types::*;
+pub use parser::*;
+pub use types::*;
 
 pub fn load(filename: &str) -> Result<GifFile, &'static str> {
     match File::open(filename) {
