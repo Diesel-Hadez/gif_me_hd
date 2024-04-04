@@ -92,20 +92,16 @@ pub fn decompress(
                 }
                 InvCode::ControlCode(special_code) => match special_code {
                     SpecialCode::ClearCodeInv => {
+                        println!("Clear Code Inventory");
                         inv_code_table.clear();
                         inv_code_table.extend(create_inverse_code_table(minimum_code_size));
-                        // I don't know why I need to re-declare it but I do...
-                        let get_code = |k| match inv_code_table.get(k as usize) {
-                            Some(val) => Some(val.clone()),
-                            None => None,
-                        };
                         cur_code_size = (minimum_code_size as u32) + 1;
 
                         // This code is also repeated from just before the for loop
                         // (Since it is going back to the beginning from after resetting
                         // the inverse code table). Can be lifted/extracted?
                         let code_key = code_stream.read_bits(cur_code_size).unwrap();
-                        let code = get_code(code_key).unwrap();
+                        let code = get_code(code_key, &inv_code_table).unwrap();
                         prev_code_key = code_key;
 
                         match code {
