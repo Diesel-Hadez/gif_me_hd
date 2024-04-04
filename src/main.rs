@@ -9,7 +9,11 @@ fn get_ppm_representation(image: &GifFile) -> Vec<(usize, String)> {
     let height = image.logical_screen_descriptor.canvas_height;
     let gct: Vec<gif_me_hd::decoder::Pixel> = image.global_color_table.as_ref().unwrap().to_vec();
     let mut cur_color_table = gct;
-    let mut prev_frame: Option<Vec<Pixel>> = None;
+    let mut prev_frame: Vec<Pixel> = vec![];
+    for _ in 0..width*height {
+        prev_frame.push(Pixel {red: 0, green: 0, blue: 0});
+    }
+    
 
     for (idx, cur_frame) in image.frames.iter().enumerate() {
         let prev_str = format!("P3\n{} {}\n255\n", width, height);
@@ -33,8 +37,7 @@ fn get_ppm_representation(image: &GifFile) -> Vec<(usize, String)> {
         };
 
         
-        let frame = match prev_frame {
-            Some(prev_frame) => {
+        let frame = 
                          prev_frame
                          .into_iter()
                         .enumerate()
@@ -59,17 +62,9 @@ fn get_ppm_representation(image: &GifFile) -> Vec<(usize, String)> {
                                 return val;
                             }
                         })
-                        .collect::<Vec<Pixel>>()
-            },
-            None => {
-                    frame_data
-                        .clone()
-                        .into_iter()
-                        .collect::<Vec<Pixel>>()
-            },
-        };
+                        .collect::<Vec<Pixel>>();
     
-        prev_frame = Some(frame.clone());
+        prev_frame = frame.clone();
         ret.push((idx, format!("{}{}", prev_str, 
                                frame
                                .iter()
