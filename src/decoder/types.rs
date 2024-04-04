@@ -30,7 +30,7 @@ pub struct LogicalScreenDescriptor {
     pub pixel_aspect_ratio: u8,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Pixel {
     pub red: u8,
     pub green: u8,
