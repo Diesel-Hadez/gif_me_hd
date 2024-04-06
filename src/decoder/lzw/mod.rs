@@ -8,7 +8,7 @@ fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     use InvCode::*;
     use SpecialCode::*;
     let mut ret = InvCodeTable::new();
-    for i in 0..((2 as u8).pow(minimum_code_size.into())) {
+    for i in 0..((2 as u32).pow(minimum_code_size.into())) {
         // TO-DO: Return Error here instead?
         ret.push(CodeList(vec![Code::from(
             i as u16,
