@@ -5,76 +5,81 @@ use std::fs;
 
 fn get_ppm_representation(image: &GifFile) -> Vec<(usize, String)> {
     let mut ret: Vec<(usize, String)> = Vec::new();
-    let width = image.logical_screen_descriptor.canvas_width;
-    let height = image.logical_screen_descriptor.canvas_height;
-    let gct: Vec<gif_me_hd::decoder::Pixel> = image.global_color_table.as_ref().unwrap().to_vec();
-    let mut cur_color_table = gct;
+    let width = image.logical_screen_descriptor.canvas_width as u32;
+    let height = image.logical_screen_descriptor.canvas_height as u32;
+    // let gct: Vec<gif_me_hd::decoder::Pixel> = image.global_color_table.as_ref().unwrap().to_vec();
+    let mut cur_color_table = image.global_color_table.clone();
     let mut prev_frame: Vec<Pixel> = vec![];
-    for _ in 0..width*height {
-        prev_frame.push(Pixel {red: 0, green: 0, blue: 0});
+    for _ in 0..width * height {
+        prev_frame.push(Pixel {
+            red: 0,
+            green: 0,
+            blue: 0,
+        });
     }
-    
 
     for (idx, cur_frame) in image.frames.iter().enumerate() {
         let prev_str = format!("P3\n{} {}\n255\n", width, height);
         cur_color_table = match &cur_frame.local_color_table {
-            Some(table) => table.clone(),
+            Some(table) => cur_frame.local_color_table.clone(),
             None => cur_color_table,
         };
-        let frame_data: Vec<Pixel> = cur_frame.frame_indices
+        let frame_data: Vec<Pixel> = cur_frame
+            .frame_indices
             .iter()
-            .map(|x| *(cur_color_table.get(*x as usize).unwrap()))
+            .map(|x| *(cur_color_table.as_ref().unwrap().get(*x as usize).unwrap()))
             .collect();
 
-        let to_x_y  = |pos: usize, width: u16| {
+        let to_x_y = |pos: usize, width: u16| {
             let x: u16 = (pos % (width as usize)) as u16;
             let y: u16 = ((pos - (x as usize)) / (width as usize)) as u16;
-            (x,y)
+            (x, y)
         };
 
-        let to_x_y_global = |pos: usize| {
-            to_x_y(pos, image.logical_screen_descriptor.canvas_width)
-        };
+        let to_x_y_global = |pos: usize| to_x_y(pos, image.logical_screen_descriptor.canvas_width);
 
-        
-        let frame = 
-                         prev_frame
-                         .into_iter()
-                        .enumerate()
-                        .collect::<Vec<(usize, Pixel)>>()
-                        .into_iter()
-                        .map(|(pos, val)| -> Pixel {
-                            let (x, y) = to_x_y_global(pos);
-                            if x >= cur_frame.image_descriptor.left && 
-                                x < cur_frame.image_descriptor.left
-                                    + cur_frame.image_descriptor.width &&
-                                y >= cur_frame.image_descriptor.top &&
-                                y < cur_frame.image_descriptor.top 
-                                    + cur_frame.image_descriptor.height {
-                                        let local_x = x - cur_frame.image_descriptor.left;
-                                        let local_y = y - cur_frame.image_descriptor.top;
-                                        let pixel = frame_data
-                                            .get(((local_y as usize)*(cur_frame.image_descriptor.width as usize)+(local_x as usize)) as usize)
-                                            .unwrap();
-                                        return *pixel;
-                                    }
-                            else {
-                                return val;
-                            }
-                        })
-                        .collect::<Vec<Pixel>>();
-    
+        let frame = prev_frame
+            .into_iter()
+            .enumerate()
+            .collect::<Vec<(usize, Pixel)>>()
+            .into_iter()
+            .map(|(pos, val)| -> Pixel {
+                let (x, y) = to_x_y_global(pos);
+                if x >= cur_frame.image_descriptor.left
+                    && x < cur_frame.image_descriptor.left + cur_frame.image_descriptor.width
+                    && y >= cur_frame.image_descriptor.top
+                    && y < cur_frame.image_descriptor.top + cur_frame.image_descriptor.height
+                {
+                    let local_x = x - cur_frame.image_descriptor.left;
+                    let local_y = y - cur_frame.image_descriptor.top;
+                    let pixel = frame_data
+                        .get(
+                            ((local_y as usize) * (cur_frame.image_descriptor.width as usize)
+                                + (local_x as usize)) as usize,
+                        )
+                        .unwrap();
+                    return *pixel;
+                } else {
+                    return val;
+                }
+            })
+            .collect::<Vec<Pixel>>();
+
         prev_frame = frame.clone();
-        ret.push((idx, format!("{}{}", prev_str, 
-                               frame
-                               .iter()
-                        .map(|val| format!("{} {} {}", val.red, val.green, val.blue))
-                        .collect::<Vec<String>>()
-                        .join("\n")
-
-                               )));
+        ret.push((
+            idx,
+            format!(
+                "{}{}",
+                prev_str,
+                frame
+                    .iter()
+                    .map(|val| format!("{} {} {}", val.red, val.green, val.blue))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            ),
+        ));
     }
-    
+
     ret.into()
 }
 

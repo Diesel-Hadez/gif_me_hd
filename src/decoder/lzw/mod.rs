@@ -8,7 +8,7 @@ fn create_inverse_code_table(minimum_code_size: u8) -> InvCodeTable {
     use InvCode::*;
     use SpecialCode::*;
     let mut ret = InvCodeTable::new();
-    for i in 0..((2 as u8).pow(minimum_code_size.into())) {
+    for i in 0..((2 as u32).pow(minimum_code_size.into())) {
         // TO-DO: Return Error here instead?
         ret.push(CodeList(vec![Code::from(
             i as u16,
@@ -42,7 +42,9 @@ pub fn decompress(
     compressed_data: Vec<u8>,
     minimum_code_size: u8,
 ) -> Result<Vec<u8>, DecompressError> {
+    println!("Starting to decompress");
     let mut inv_code_table = create_inverse_code_table(minimum_code_size);
+    println!("Created Inverse Code Table");
     let mut cur_code_size: u32 = (minimum_code_size as u32) + 1;
 
     // Helper function to get a specific code from the code inv table
@@ -79,6 +81,7 @@ pub fn decompress(
         _ => panic!("First value should be a Code List!"),
     }
 
+    println!("Going to loop");
     loop {
         let code_key = code_stream.read_bits(cur_code_size).unwrap();
         let code = get_code(code_key, &inv_code_table);

@@ -144,6 +144,7 @@ fn parse_extensions(bytes: &[u8]) -> IResult<&[u8], Vec<Extension>> {
                 let (bytes, delay_timer) = le_u16(bytes)?;
                 let (bytes, transparent_color_index) = le_u8(bytes)?;
                 let (bytes, _) = tag(BLOCK_TERMINATOR)(bytes)?;
+                println!("Got Graphics Control Extension!");
 
                 Ok((
                     bytes,
@@ -171,20 +172,14 @@ fn parse_extensions(bytes: &[u8]) -> IResult<&[u8], Vec<Extension>> {
                 Ok((bytes, Extension::PlainText { text: "".into() }))
             }
             0xFF => {
-                const NETSCAPE_EXTENSION_LENGTH: u8 = 11;
-                let (bytes, block_size) = le_u8(bytes)?;
-                assert_eq!(block_size, NETSCAPE_EXTENSION_LENGTH);
-                let (bytes, combined) = take(block_size)(bytes)?;
-
-                // For some reason, there are usually extra bytes after this
-                // which I'm not sure what is used for...
-                let (bytes, extra) = parse_data_block(bytes)?;
+                let (bytes, data) = parse_data_block(bytes)?;
+                println!("{:#02X?}", data);
                 Ok((
                     bytes,
                     Extension::Application {
-                        identifier: str::from_utf8(&combined[..8]).unwrap().into(),
-                        authentication_code: str::from_utf8(&combined[8..]).unwrap().into(),
-                        data: extra,
+                        identifier: "".into(),
+                        authentication_code: "".into(),
+                        data,
                     },
                 ))
             }
@@ -234,6 +229,7 @@ fn parse_image_descriptor(bytes: &[u8]) -> IResult<&[u8], ImageDescriptor> {
     let (bytes, width) = le_u16(bytes)?;
     let (bytes, height) = le_u16(bytes)?;
     let (bytes, packed_field) = nom::bits::bits(parse_packed_field)(bytes)?;
+    println!("Got Image Descriptor!");
     Ok((
         bytes,
         ImageDescriptor {
@@ -292,7 +288,9 @@ fn parse_data_block(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
 
 fn parse_image_data(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
     let (bytes, lzw_minimum_code_size) = le_u8(bytes)?;
+    println!("Going to parse image data block");
     let (bytes, compressed_data) = parse_data_block(bytes)?;
+    println!("Done parse image data block");
 
     Ok((
         bytes,
@@ -303,10 +301,13 @@ fn parse_image_data(bytes: &[u8]) -> IResult<&[u8], Vec<u8>> {
 }
 
 fn parse_frame(bytes: &[u8]) -> IResult<&[u8], GifFrame> {
+    println!("Reached Parsing Frame");
     let (bytes, extensions) = parse_extensions(bytes).unwrap();
+    println!("Finished Frame Extension loading");
     let (bytes, image_descriptor) = parse_image_descriptor(bytes)?;
     let (bytes, local_color_table) = parse_local_color_table(bytes, &image_descriptor)?;
     let (bytes, frame_indices) = parse_image_data(bytes)?;
+    println!("Got a frame!");
     Ok((
         bytes,
         GifFrame {
